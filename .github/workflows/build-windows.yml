@@ -1,27 +1,30 @@
 name: Build Windows x64 Desktop
 
 on:
-  workflow_dispatch: # 支持手动触发
+  workflow_dispatch:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
 
 jobs:
   build-win-x64:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     env:
       NODE_OPTIONS: "--max-old-space-size=8192"
-      CSC_IDENTITY_AUTO_DISCOVERY: "false" # 未配置证书时跳过代码签名检测
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
     steps:
-      - name: Enable Git Longpaths
-        run: git config --system core.longpaths true
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Setup Wine (for Windows packaging on Linux)
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends wine-stable mono-devel
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -34,10 +37,8 @@ jobs:
           node-version: 24.14.0
           cache: 'pnpm'
 
-      - name: Install dependencies & Bootstrap
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm bootstrap
+      - name: Bootstrap project
+        run: pnpm bootstrap
 
       - name: Prepare desktop runtime assets
         run: pnpm prepare:desktop-runtime
